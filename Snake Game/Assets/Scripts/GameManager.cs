@@ -14,17 +14,29 @@ namespace SG {
 		public Color color2;
 		public Color playerColor = Color.black;
 
+		public Transform cameraHolder;
+
 		GameObject playerObject;
+		Node playerNode;
 
 		GameObject mapObject;
 		SpriteRenderer mapRenderer;
 
 		Node[,] grid;
 
+		bool up, left, right, down;
+		bool shouldMovePlayer;
+		Direction curDirection;
+		public enum Direction {
+			up, down, left, right
+		}
+
+		#region Init
 		public void Start() {
 
 			CreateMap();
 			PlacePlayer();
+			PlaceCamera();
 
 		}
 
@@ -75,7 +87,7 @@ namespace SG {
 
 			Rect rect = new Rect(0, 0, maxWidth, maxHeight);
 
-			Sprite sprite = Sprite.Create(txt, rect, Vector2.one * .5f, 1, 0, SpriteMeshType.FullRect);
+			Sprite sprite = Sprite.Create(txt, rect, Vector2.zero, 1, 0, SpriteMeshType.FullRect);
 			mapRenderer.sprite = sprite;
 
 		}
@@ -87,13 +99,92 @@ namespace SG {
 			playerRenderer.sprite = CreateSprite(playerColor);
 			playerRenderer.sortingOrder = 1;
 
-			playerObject.transform.position = GetNode(3, 3).worldPosition;
+			playerNode = GetNode(3, 3);
+			playerObject.transform.position = playerNode.worldPosition;
 
 		}
 
+		void PlaceCamera() {
+			Node n = GetNode(maxWidth / 2, maxHeight / 2);
+			Vector3 p = n.worldPosition;
+			p += Vector3.one * .5f;
+			cameraHolder.position = p;
+		}
+
+		#endregion
+
+		#region Update
+
+		private void Update() {
+			GetInput();
+			SetPlayerDirection();
+			MovePlayer();
+		}
+
+		void GetInput() {
+
+			up = Input.GetButtonDown("Up");
+			down = Input.GetButtonDown("Down");
+			left = Input.GetButtonDown("Left");
+			right = Input.GetButtonDown("Right");
+
+		}
+
+		void SetPlayerDirection() {
+			if (up) {
+				curDirection = Direction.up;
+				shouldMovePlayer = true;
+			} else if (down) {
+				curDirection = Direction.down;
+				shouldMovePlayer = true;
+			} else if (left) {
+				curDirection = Direction.left;
+				shouldMovePlayer = true;
+			} else if (right) {
+				curDirection = Direction.right;
+				shouldMovePlayer = true;
+			}
+		}
+
+		void MovePlayer() {
+
+			if (!shouldMovePlayer) return;
+
+			shouldMovePlayer = false;
+
+			int x = 0;
+			int y = 0;
+
+			switch (curDirection) {
+				case Direction.up:
+					y = 1;
+					break;
+				case Direction.down:
+					y = -1;
+					break;
+				case Direction.left:
+					x = -1;
+					break;
+				case Direction.right:
+					x = 1;
+					break;
+			}
+
+			Node targetNode = GetNode(playerNode.x + x, playerNode.y + y);
+			if (targetNode == null) {
+				// Game over
+			} else {
+				playerObject.transform.position = targetNode.worldPosition;
+				playerNode = targetNode;
+			}
+		}
+
+		#endregion
+
+		#region Utililities
 		Node GetNode(int x, int y) {
 
-			if (x < 0 || x > maxWidth - 1 || y < 0 || y > maxHeight - 1){
+			if (x < 0 || x > maxWidth - 1 || y < 0 || y > maxHeight - 1) {
 				return null;
 			}
 
@@ -107,8 +198,9 @@ namespace SG {
 			txt.filterMode = FilterMode.Point;
 
 			Rect rect = new Rect(0, 0, 1, 1);
-			return Sprite.Create(txt, rect, Vector2.one * .5f, 1, 0, SpriteMeshType.FullRect);
+			return Sprite.Create(txt, rect, Vector2.zero, 1, 0, SpriteMeshType.FullRect);
 		}
+		#endregion
 
 	}
 }
