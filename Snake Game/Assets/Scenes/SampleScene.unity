@@ -153,6 +153,7 @@ MonoBehaviour:
   maxWidth: 17
   color1: {r: 0, g: 1, b: 0.051671505, a: 1}
   color2: {r: 0, g: 0.4339623, b: 0.03826496, a: 1}
+  playerColor: {r: 0.2924528, g: 0.2924528, b: 0.2924528, a: 1}
 --- !u!4 &386905444
 Transform:
   m_ObjectHideFlags: 0
