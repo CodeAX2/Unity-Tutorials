@@ -19,14 +19,19 @@ namespace SG {
 
 		GameObject playerObject;
 		GameObject appleObject;
+		GameObject tailParent;
+
 		Node playerNode;
 		Node appleNode;
+
+		Sprite playerSprite;
 
 		GameObject mapObject;
 		SpriteRenderer mapRenderer;
 
 		Node[,] grid;
 		List<Node> availableNodes = new List<Node>();
+		List<SpecialNode> tail = new List<SpecialNode>();
 
 		bool up, left, right, down;
 
@@ -107,11 +112,14 @@ namespace SG {
 
 			playerObject = new GameObject("Player");
 			SpriteRenderer playerRenderer = playerObject.AddComponent<SpriteRenderer>();
-			playerRenderer.sprite = CreateSprite(playerColor);
+			playerSprite = CreateSprite(playerColor);
+			playerRenderer.sprite = playerSprite;
 			playerRenderer.sortingOrder = 1;
 
 			playerNode = GetNode(3, 3);
 			playerObject.transform.position = playerNode.worldPosition;
+
+			tailParent = new GameObject("TailParent");
 
 		}
 
@@ -200,12 +208,19 @@ namespace SG {
 					isScore = true;
 				}
 
-				availableNodes.Add(playerNode);
+				Node previousNode = playerNode;
+
+				availableNodes.Add(previousNode);
 				playerObject.transform.position = targetNode.worldPosition;
 				playerNode = targetNode;
 				availableNodes.Remove(playerNode);
 
-				// Move tail
+				if (isScore) {
+					tail.Add(CreateTailNode(previousNode.x, previousNode.y));
+					availableNodes.Remove(previousNode);
+				}
+
+				MoveTail();
 
 				if (isScore) {
 					if (availableNodes.Count > 0) {
@@ -218,6 +233,29 @@ namespace SG {
 			}
 		}
 
+		void MoveTail() {
+
+			Node prevNode = null;
+			for(int i = 0; i < tail.Count; i++) {
+				SpecialNode p = tail[i];
+				availableNodes.Add(p.node);
+
+				if(i == 0) {
+					prevNode = p.node;
+					p.node = playerNode;
+				} else {
+					Node temp = p.node;
+					p.node = prevNode;
+					prevNode = temp;
+				}
+
+				availableNodes.Remove(p.node);
+				p.obj.transform.position = p.node.worldPosition;
+
+			}
+
+		}
+
 		#endregion
 
 		#region Utililities
@@ -228,6 +266,20 @@ namespace SG {
 			}
 
 			return grid[x, y];
+		}
+
+		SpecialNode CreateTailNode(int x, int y) {
+			SpecialNode s = new SpecialNode();
+			s.node = GetNode(x, y);
+			s.obj = new GameObject();
+			s.obj.transform.parent = tailParent.transform;
+			s.obj.transform.position = s.node.worldPosition;
+
+			SpriteRenderer r = s.obj.AddComponent<SpriteRenderer>();
+			r.sprite = playerSprite;
+			r.sortingOrder = 1;
+
+			return s;
 		}
 
 		Sprite CreateSprite(Color targetColor) {
