@@ -13,19 +13,26 @@ namespace SG {
 		public Color color1;
 		public Color color2;
 		public Color playerColor = Color.black;
+		public Color appleColor = Color.red;
 
 		public Transform cameraHolder;
 
 		GameObject playerObject;
+		GameObject appleObject;
 		Node playerNode;
+		Node appleNode;
 
 		GameObject mapObject;
 		SpriteRenderer mapRenderer;
 
 		Node[,] grid;
+		List<Node> availableNodes = new List<Node>();
 
 		bool up, left, right, down;
-		bool shouldMovePlayer;
+
+		public float moveRate = 0.5f;
+		float timer;
+
 		Direction curDirection;
 		public enum Direction {
 			up, down, left, right
@@ -37,6 +44,8 @@ namespace SG {
 			CreateMap();
 			PlacePlayer();
 			PlaceCamera();
+			CreateApple();
+			curDirection = Direction.right;
 
 		}
 
@@ -62,6 +71,8 @@ namespace SG {
 					};
 
 					grid[x, y] = n;
+
+					availableNodes.Add(n);
 
 					#region CreateTexture
 					if (x % 2 != 0) {
@@ -111,6 +122,14 @@ namespace SG {
 			cameraHolder.position = p;
 		}
 
+		void CreateApple() {
+			appleObject = new GameObject("Apple");
+			SpriteRenderer appleRenderer = appleObject.AddComponent<SpriteRenderer>();
+			appleRenderer.sprite = CreateSprite(appleColor);
+			appleRenderer.sortingOrder = 1;
+			RandomlyPlaceApple();
+		}
+
 		#endregion
 
 		#region Update
@@ -118,7 +137,14 @@ namespace SG {
 		private void Update() {
 			GetInput();
 			SetPlayerDirection();
-			MovePlayer();
+
+			timer += Time.deltaTime;
+			if (timer > moveRate) {
+				MovePlayer();
+				timer = 0;
+			}
+
+
 		}
 
 		void GetInput() {
@@ -133,24 +159,16 @@ namespace SG {
 		void SetPlayerDirection() {
 			if (up) {
 				curDirection = Direction.up;
-				shouldMovePlayer = true;
 			} else if (down) {
 				curDirection = Direction.down;
-				shouldMovePlayer = true;
 			} else if (left) {
 				curDirection = Direction.left;
-				shouldMovePlayer = true;
 			} else if (right) {
 				curDirection = Direction.right;
-				shouldMovePlayer = true;
 			}
 		}
 
 		void MovePlayer() {
-
-			if (!shouldMovePlayer) return;
-
-			shouldMovePlayer = false;
 
 			int x = 0;
 			int y = 0;
@@ -174,8 +192,29 @@ namespace SG {
 			if (targetNode == null) {
 				// Game over
 			} else {
+
+				bool isScore = false;
+
+				if (targetNode == appleNode) {
+					// You've scored
+					isScore = true;
+				}
+
+				availableNodes.Add(playerNode);
 				playerObject.transform.position = targetNode.worldPosition;
 				playerNode = targetNode;
+				availableNodes.Remove(playerNode);
+
+				// Move tail
+
+				if (isScore) {
+					if (availableNodes.Count > 0) {
+						RandomlyPlaceApple();
+					} else {
+						// You won
+					}
+				}
+
 			}
 		}
 
@@ -200,6 +239,14 @@ namespace SG {
 			Rect rect = new Rect(0, 0, 1, 1);
 			return Sprite.Create(txt, rect, Vector2.zero, 1, 0, SpriteMeshType.FullRect);
 		}
+
+		void RandomlyPlaceApple() {
+			int random = Random.Range(0, availableNodes.Count);
+			Node n = availableNodes[random];
+			appleObject.transform.position = n.worldPosition;
+			appleNode = n;
+		}
+
 		#endregion
 
 	}
