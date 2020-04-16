@@ -23,6 +23,7 @@ namespace SG {
 
 		Node playerNode;
 		Node appleNode;
+		Node prevPlayerNode;
 
 		Sprite playerSprite;
 
@@ -38,6 +39,7 @@ namespace SG {
 		public float moveRate = 0.5f;
 		float timer;
 
+		Direction targetDirection;
 		Direction curDirection;
 		public enum Direction {
 			up, down, left, right
@@ -50,7 +52,7 @@ namespace SG {
 			PlacePlayer();
 			PlaceCamera();
 			CreateApple();
-			curDirection = Direction.right;
+			targetDirection = Direction.right;
 
 		}
 
@@ -117,7 +119,8 @@ namespace SG {
 			playerRenderer.sortingOrder = 1;
 
 			playerNode = GetNode(3, 3);
-			playerObject.transform.position = playerNode.worldPosition;
+			PlacePlayerObject(playerObject, playerNode.worldPosition);
+			playerObject.transform.localScale = Vector3.one * 1.2f;
 
 			tailParent = new GameObject("TailParent");
 
@@ -148,8 +151,9 @@ namespace SG {
 
 			timer += Time.deltaTime;
 			if (timer > moveRate) {
-				MovePlayer();
 				timer = 0;
+				curDirection = targetDirection;
+				MovePlayer();
 			}
 
 
@@ -166,13 +170,19 @@ namespace SG {
 
 		void SetPlayerDirection() {
 			if (up) {
-				curDirection = Direction.up;
+				SetDirection(Direction.up);
 			} else if (down) {
-				curDirection = Direction.down;
+				SetDirection(Direction.down);
 			} else if (left) {
-				curDirection = Direction.left;
+				SetDirection(Direction.left);
 			} else if (right) {
-				curDirection = Direction.right;
+				SetDirection(Direction.right);
+			}
+		}
+
+		void SetDirection(Direction d) {
+			if (!IsOpposite(d)) {
+				targetDirection = d;
 			}
 		}
 
@@ -197,7 +207,7 @@ namespace SG {
 			}
 
 			Node targetNode = GetNode(playerNode.x + x, playerNode.y + y);
-			if (targetNode == null) {
+			if (targetNode == null || IsTailNode(targetNode)) {
 				// Game over
 			} else {
 
@@ -209,11 +219,8 @@ namespace SG {
 				}
 
 				Node previousNode = playerNode;
-
 				availableNodes.Add(previousNode);
-				playerObject.transform.position = targetNode.worldPosition;
-				playerNode = targetNode;
-				availableNodes.Remove(playerNode);
+
 
 				if (isScore) {
 					tail.Add(CreateTailNode(previousNode.x, previousNode.y));
@@ -221,6 +228,10 @@ namespace SG {
 				}
 
 				MoveTail();
+
+				PlacePlayerObject(playerObject, targetNode.worldPosition);
+				playerNode = targetNode;
+				availableNodes.Remove(playerNode);
 
 				if (isScore) {
 					if (availableNodes.Count > 0) {
@@ -236,11 +247,11 @@ namespace SG {
 		void MoveTail() {
 
 			Node prevNode = null;
-			for(int i = 0; i < tail.Count; i++) {
+			for (int i = 0; i < tail.Count; i++) {
 				SpecialNode p = tail[i];
 				availableNodes.Add(p.node);
 
-				if(i == 0) {
+				if (i == 0) {
 					prevNode = p.node;
 					p.node = playerNode;
 				} else {
@@ -250,7 +261,7 @@ namespace SG {
 				}
 
 				availableNodes.Remove(p.node);
-				p.obj.transform.position = p.node.worldPosition;
+				PlacePlayerObject(p.obj, p.node.worldPosition);
 
 			}
 
@@ -268,12 +279,18 @@ namespace SG {
 			return grid[x, y];
 		}
 
+		void PlacePlayerObject(GameObject obj, Vector3 pos) {
+			pos += Vector3.one * .5f;
+			obj.transform.position = pos;
+		}
+
 		SpecialNode CreateTailNode(int x, int y) {
 			SpecialNode s = new SpecialNode();
 			s.node = GetNode(x, y);
 			s.obj = new GameObject();
 			s.obj.transform.parent = tailParent.transform;
 			s.obj.transform.position = s.node.worldPosition;
+			s.obj.transform.localScale = Vector3.one * .95f;
 
 			SpriteRenderer r = s.obj.AddComponent<SpriteRenderer>();
 			r.sprite = playerSprite;
@@ -289,14 +306,38 @@ namespace SG {
 			txt.filterMode = FilterMode.Point;
 
 			Rect rect = new Rect(0, 0, 1, 1);
-			return Sprite.Create(txt, rect, Vector2.zero, 1, 0, SpriteMeshType.FullRect);
+			return Sprite.Create(txt, rect, Vector2.one * .5f, 1, 0, SpriteMeshType.FullRect);
 		}
 
 		void RandomlyPlaceApple() {
 			int random = Random.Range(0, availableNodes.Count);
 			Node n = availableNodes[random];
-			appleObject.transform.position = n.worldPosition;
+			PlacePlayerObject(appleObject, n.worldPosition);
 			appleNode = n;
+		}
+
+		bool IsOpposite(Direction d) {
+			switch (d) {
+				case Direction.up:
+					return curDirection == Direction.down;
+				case Direction.down:
+					return curDirection == Direction.up;
+				case Direction.left:
+					return curDirection == Direction.right;
+				case Direction.right:
+					return curDirection == Direction.left;
+				default:
+					return false;
+			}
+		}
+
+		bool IsTailNode(Node n) {
+			for (int i = 0; i < tail.Count; i++) {
+				if (tail[i].node == n) {
+					return true;
+				}
+			}
+			return false;
 		}
 
 		#endregion
