@@ -1,6 +1,8 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events;
+using UnityEngine.UI;
 
 namespace SG {
 
@@ -36,8 +38,17 @@ namespace SG {
 
 		bool up, left, right, down;
 
+		int currentScore;
+		int highScore;
+
+		public bool isGameOver;
+		public bool isFirstInput;
+
 		public float moveRate = 0.5f;
 		float timer;
+
+		public Text currentScoreText;
+		public Text highScoreText;
 
 		Direction targetDirection;
 		Direction curDirection;
@@ -45,15 +56,49 @@ namespace SG {
 			up, down, left, right
 		}
 
+		public UnityEvent onStart;
+		public UnityEvent onGameOver;
+		public UnityEvent firstInput;
+		public UnityEvent onScore;
+
 		#region Init
 		public void Start() {
+			onStart.Invoke();
+		}
 
+		public void StartNewGame() {
+			ClearRefrences();
 			CreateMap();
 			PlacePlayer();
 			PlaceCamera();
 			CreateApple();
+			curDirection = Direction.right;
 			targetDirection = Direction.right;
+			isGameOver = false;
+			currentScore = 0;
+			UpdateScore();
+		}
 
+		public void ClearRefrences() {
+
+			if (mapObject != null) {
+				Destroy(mapObject);
+			}
+
+			if (playerObject != null) {
+				Destroy(playerObject);
+			}
+
+			if (appleObject != null) {
+				Destroy(appleObject);
+			}
+
+			for (int i = 0; i < tail.Count; i++) {
+				Destroy(tail[i].obj);
+			}
+			tail.Clear();
+			availableNodes.Clear();
+			grid = null;
 		}
 
 		void CreateMap() {
@@ -146,14 +191,31 @@ namespace SG {
 		#region Update
 
 		private void Update() {
-			GetInput();
-			SetPlayerDirection();
 
-			timer += Time.deltaTime;
-			if (timer > moveRate) {
-				timer = 0;
-				curDirection = targetDirection;
-				MovePlayer();
+			if (isGameOver) {
+				if (Input.GetKeyDown(KeyCode.R)) {
+					onStart.Invoke();
+				}
+				return; 
+			}
+
+			GetInput();
+
+			if (isFirstInput) {
+
+
+				SetPlayerDirection();
+				timer += Time.deltaTime;
+				if (timer > moveRate) {
+					timer = 0;
+					curDirection = targetDirection;
+					MovePlayer();
+				}
+			} else {
+				if (up || down || left || right) {
+					isFirstInput = true;
+					firstInput.Invoke();
+				}
 			}
 
 
@@ -209,6 +271,7 @@ namespace SG {
 			Node targetNode = GetNode(playerNode.x + x, playerNode.y + y);
 			if (targetNode == null || IsTailNode(targetNode)) {
 				// Game over
+				onGameOver.Invoke();
 			} else {
 
 				bool isScore = false;
@@ -234,6 +297,14 @@ namespace SG {
 				availableNodes.Remove(playerNode);
 
 				if (isScore) {
+
+					currentScore++;
+					if(currentScore >= highScore) {
+						highScore = currentScore;
+					}
+
+					onScore.Invoke();
+
 					if (availableNodes.Count > 0) {
 						RandomlyPlaceApple();
 					} else {
@@ -270,6 +341,16 @@ namespace SG {
 		#endregion
 
 		#region Utililities
+
+		public void GameOver() {
+			isGameOver = true;
+			isFirstInput = false;
+		}
+
+		public void UpdateScore() {
+			currentScoreText.text = currentScore.ToString();
+			highScoreText.text = highScore.ToString();
+		}
 		Node GetNode(int x, int y) {
 
 			if (x < 0 || x > maxWidth - 1 || y < 0 || y > maxHeight - 1) {
